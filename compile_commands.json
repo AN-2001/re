@@ -1,0 +1,57 @@
+[
+    {
+        "arguments": [
+            "gcc",
+            "-c",
+            "-o",
+            "queue.o",
+            "queue.c"
+        ],
+        "directory": "/home/amber/projects/NFA_TO_DFA",
+        "file": "queue.c"
+    },
+    {
+        "arguments": [
+            "gcc",
+            "-c",
+            "-o",
+            "stack.o",
+            "stack.c"
+        ],
+        "directory": "/home/amber/projects/NFA_TO_DFA",
+        "file": "stack.c"
+    },
+    {
+        "arguments": [
+            "gcc",
+            "-c",
+            "-o",
+            "automata.o",
+            "automata.c"
+        ],
+        "directory": "/home/amber/projects/NFA_TO_DFA",
+        "file": "automata.c"
+    },
+    {
+        "arguments": [
+            "gcc",
+            "-c",
+            "-o",
+            "setOfSets.o",
+            "setOfSets.c"
+        ],
+        "directory": "/home/amber/projects/NFA_TO_DFA",
+        "file": "setOfSets.c"
+    },
+    {
+        "arguments": [
+            "gcc",
+            "-c",
+            "-o",
+            "set_1.o",
+            "set_1.c"
+        ],
+        "directory": "/home/amber/projects/NFA_TO_DFA",
+        "file": "set_1.c"
+    }
+]
