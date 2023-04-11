@@ -2,7 +2,7 @@
 #include "set.h"
 
 #define START_SIZE (32)
-#define GROWTH_SIZE (2)
+#define GROWTH_SIZE (1.5f)
 
 struct SetSet_t {
     size_t Size, Head;

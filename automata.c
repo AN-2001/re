@@ -9,8 +9,8 @@
 #include "automata.h"
 #include "config.h"
 
-#define DFA_START_SIZE (128)
-#define DFA_GROWTH_FACTOR (2)
+#define DFA_START_SIZE (32)
+#define DFA_GROWTH_FACTOR (1.5f)
 
 #define ASCII_TEXT_COLOR(r,g,b) "\033[38;2;"#r";"#g";"#b"m"
 #define CONS(N, H)     \
@@ -71,10 +71,8 @@ int main(int argc, const char *argv[])
     printf("!READY!\n");
 
     while (fgets(Buff, BUFF_SIZE, stdin)) {
-        if (!DFARunInput(DFA, Buff, Matches)) {
-            printf("!NO MATCH!\n");
+        if (!DFARunInput(DFA, Buff, Matches))
             continue;
-        }
 
         for (i = 0; Buff[i]; i++) {
             if (Matches[i])
@@ -87,12 +85,14 @@ int main(int argc, const char *argv[])
     }
 
     DFAFree(DFA);
+    NFAFree(NFA);
     free(Matches);
     return 0;
 }
  
 static inline NFA NFAFromRegex(char *Str)
 {
+    int Counter;
     size_t e;
     NFA Res = NULL;
 
@@ -107,7 +107,11 @@ static inline NFA NFAFromRegex(char *Str)
             Res = NFAConcat(Res, NFAAtMostOne(NFALetter(*Str)));
             Str += 2;
         } else if (Str[0] == '(') {
-            for (e = 1; Str[e] != ')'; e++); 
+            Counter = 1;
+            for (e = 1; Counter; e++)
+                Counter += (Str[e] == '(') - (Str[e] == ')');
+
+            e--;
             Str[e] = '\0';
             if (Str[e + 1] == '*') {
                 Res = NFAConcat(Res, NFAStar(NFAFromRegex(Str + 1)));
@@ -147,9 +151,9 @@ DFA DFAInitFromNFA(NFA NFA)
         for (k = 0; k < DFA_ALPHA_LEN; k++)
             Ret -> Transitions[i][k] = -1;
 
-    Ret -> FinalStates = SetInit(NFA -> States);
+    Ret -> FinalStates = SetInit(DFA_START_SIZE);
     Ret -> AllocatedStates = DFA_START_SIZE;
-    Ret -> AllStates = SetOfSetsInit((size_t)1 << NFA -> States, NFA -> States);
+    Ret -> AllStates = SetOfSetsInit(DFA_START_SIZE, NFA -> States);
     Ret -> CurrentState = 0;
     Ret -> EquivNFA = NFA;
 
@@ -163,6 +167,8 @@ DFA DFAInitFromNFA(NFA NFA)
         }
     }
 
+
+    SetFree(Closure);
     return Ret;
 }
 
@@ -204,7 +210,7 @@ int DFAIsDone(DFA DFA)
 
 void DFAReset(DFA DFA)
 {
-    DFA -> CurrentState = 0;
+    return;
 }
 
 int DFARunInputAux(DFA DFA, char *InputWord, int s, int *Matches)
@@ -212,7 +218,7 @@ int DFARunInputAux(DFA DFA, char *InputWord, int s, int *Matches)
     int e,
         FoundMatch = 0;
 
-    DFAReset(DFA);
+    DFA -> CurrentState = 0;
     if (DFAIsDone(DFA))
         FoundMatch = 1;
 
@@ -232,6 +238,7 @@ int DFARunInput(DFA DFA, char *InputWord, int *Matches)
     int s, 
         FoundMatch = 0;
 
+    DFAReset(DFA);
     memset(Matches, 0, sizeof(*Matches) * BUFF_SIZE);
     for (s = 0; InputWord[s]; s++)
         if (DFARunInputAux(DFA, InputWord, s, Matches))
@@ -324,7 +331,6 @@ void NFAFree(NFA NFA)
 
 void DFAFree(DFA DFA)
 {
-    NFAFree(DFA -> EquivNFA);
     SetFree(DFA -> FinalStates);
     SetOfSetsFree(DFA -> AllStates);
     free(DFA -> Transitions);

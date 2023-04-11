@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include "set.h"
 
-#define START_SIZE (128)
-#define GROWTH_FACTOR (2)
+#define START_SIZE (32)
+#define GROWTH_FACTOR (1.5f)
 
 static inline int IntCompare(const void *Int1, const void *Int2);
 
@@ -56,7 +56,7 @@ void SetSet(Set Set, size_t i)
     Set -> Elements[Set -> Head++] = i;
 
     if (Set -> Head >= Set -> NumElements) {
-        Set -> NumElements = Set -> NumElements * GROWTH_FACTOR;
+        Set -> NumElements *= GROWTH_FACTOR;
         Set -> Elements = realloc(Set -> Elements,
                                   sizeof(Set -> Elements) * Set -> NumElements);
     }
