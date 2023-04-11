@@ -38,7 +38,8 @@ static inline NFA NFAOr(NFA NFA1, NFA NFA2);
 static inline void NFAEpsClosure(NFA NFA, Set States, Set Return);
 static inline void NFAFree(NFA NFA);
 
-static inline DFA DFAInit(size_t States);
+static inline DFA DFAInit();
+static inline DFA DFAInitFromNFA();
 static inline void DFAAddTransition(DFA DFA,
                                     size_t Src,
                                     int Letter,

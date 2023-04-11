@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "set.h"
 
-#define START_SIZE (16)
+#define START_SIZE (128)
 #define GROWTH_FACTOR (2)
 
 static inline int IntCompare(const void *Int1, const void *Int2);
