@@ -1,5 +1,5 @@
 cc := gcc
-flags :=
+flags := -g
 #flags += -DNDEBUG
 
 libs :=

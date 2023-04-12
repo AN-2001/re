@@ -37,7 +37,8 @@ struct DFA_t {
 };
 
 static NFA Head = NULL;
-static inline NFA NFAFromRegex(char *Str);
+static inline char *VerifyRegex(const char *Regex);
+static inline NFA NFAFromRegex(char *Regex);
 static inline DFA DFAInitFromNFA(NFA NFA);
 static inline void DFARunChar(DFA DFA, char c);
 static inline int DFAIsDone(DFA DFA);
@@ -53,15 +54,24 @@ int main(int argc, const char *argv[])
     DFA DFA;
     NFA NFA, Next;
     char Buff[BUFF_SIZE];
-    int 
-        *Matches = malloc(sizeof(*Matches) * BUFF_SIZE);
+    char *Regex;
+    int *Matches;
     size_t i, j;
     int M;
 
-    NFA = NFAFromRegex((char*)argv[1]);
+    Regex = VerifyRegex(argv[1]);
+
+    if (!Regex) {
+        printf("!INVALID REGEX!\n");
+        return 1;
+    }
+
+    NFA = NFAFromRegex(Regex);
+    free(Regex);
     printf("!BUILT NFA!\n");
 
     DFA = DFAInitFromNFA(NFA);
+    Matches = malloc(sizeof(*Matches) * BUFF_SIZE);
     while (Head) {
         Next = Head -> Next; 
         if (Head != NFA)
@@ -97,15 +107,10 @@ static inline NFA NFAFromRegex(char *Str)
     NFA Res = NULL;
 
     for (;*Str;) {
-        if (Str[1] == '*') {
-            Res = NFAConcat(Res, NFAStar(NFALetter(*Str)));
-            Str += 2;
-        } else if (Str[1] == '+') {
-            Res = NFAConcat(Res, NFAPlus(NFALetter(*Str)));
-            Str += 2;
-        } else if (Str[1] == '?') {
-            Res = NFAConcat(Res, NFAAtMostOne(NFALetter(*Str)));
-            Str += 2;
+        if (Str[0] == '\\') {
+            Str += 1;
+            Res = NFAConcat(Res, NFALetter(*Str));
+            Str += 1;
         } else if (Str[0] == '(') {
             Counter = 1;
             for (e = 1; Counter; e++)
@@ -128,6 +133,15 @@ static inline NFA NFAFromRegex(char *Str)
             }
         } else if(Str[0] == '|') {
             return NFAOr(Res, NFAFromRegex(Str + 1));
+        } else if (Str[1] == '*') {
+            Res = NFAConcat(Res, NFAStar(NFALetter(*Str)));
+            Str += 2;
+        } else if (Str[1] == '+') {
+            Res = NFAConcat(Res, NFAPlus(NFALetter(*Str)));
+            Str += 2;
+        } else if (Str[1] == '?') {
+            Res = NFAConcat(Res, NFAAtMostOne(NFALetter(*Str)));
+            Str += 2;
         } else {
             Res = NFAConcat(Res, NFALetter(*Str));
             Str += 1;
@@ -135,6 +149,34 @@ static inline NFA NFAFromRegex(char *Str)
     }
 
     return Res;
+}
+
+char *VerifyRegex(const char *Regex)
+{
+    size_t i,
+           Size = strlen(Regex);
+    int 
+        Brackets = 0;
+    char *Cpy;
+
+    if (Regex[0] == '*' ||
+        Regex[0] == '?' ||
+        Regex[0] == '+' ||
+        Regex[0] == '|')
+        return NULL;
+ 
+    for (i = 0; i < Size; i++) {
+        Brackets += (Regex[i] == '(') - (Regex[i] == ')');
+        if (Brackets < 0)
+            return NULL;
+    }
+
+    if (Brackets)
+        return NULL;
+
+    Cpy = malloc(Size);
+    memcpy(Cpy, Regex, Size + 1);
+    return Cpy;
 }
 
 DFA DFAInitFromNFA(NFA NFA) 
@@ -176,6 +218,9 @@ void DFARunChar(DFA DFA, char c)
 {
     Set CurrSet, CurrLetter;
     size_t j, i;
+
+    if (c < 0)
+        return;
 
     if (DFA -> Transitions[DFA -> CurrentState][c] == -1) {
         CurrSet = SetOfSetsGet(DFA -> AllStates, DFA -> CurrentState);
