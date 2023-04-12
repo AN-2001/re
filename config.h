@@ -15,7 +15,7 @@ typedef unsigned char BOOL;
 #define NFA_ALPHA_LEN (DFA_ALPHA_LEN + 1)
 #define NFA_EPS (DFA_ALPHA_LEN)
 
-#define BUFF_SIZE (2048)
+#define BUFF_SIZE (1024)
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 

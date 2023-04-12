@@ -16,7 +16,7 @@
 
 typedef struct Set_t *Set;
 
-Set SetInit(size_t NumElements);
+Set SetInit();
 Set SetCopy(Set Set);
 Set SetUnion(Set S1, Set S2);
 void SetSet(Set Set, size_t i);

@@ -1,90 +1,123 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "set.h"
-#include <stdlib.h>
-#include <memory.h>
-#include <stdlib.h>
 #include "config.h"
+#include "memory.h"
+
+#define START_SIZE (32)
+#define GROWTH_FACTOR (2)
+
+static inline int IntCompare(const void *Int1, const void *Int2);
 
 struct Set_t {
-    size_t NumElements;
-    BOOL *Elements;
+    size_t NumElements, Head;
+    int *Elements;
 };
 
-Set SetInit(size_t NumElements)
+Set SetInit()
 {
     Set
         Ret = malloc(sizeof(*Ret));
 
-    Ret -> NumElements = NumElements;
-    Ret -> Elements = malloc(sizeof(*Ret -> Elements) * NumElements);
-    memset(Ret -> Elements, 0, sizeof(*Ret -> Elements) * NumElements);
+    if (!Ret)
+        return NULL;
+
+    Ret -> NumElements = START_SIZE;
+    Ret -> Head = 0;
+    Ret -> Elements = malloc(sizeof(*Ret -> Elements) * START_SIZE);
+
     return Ret;
 }
 
 Set SetCopy(Set S)
 {
     Set
-        Ret = SetInit(S -> NumElements);
+        Ret = malloc(sizeof(*Ret));
 
-    Ret = SetUnion(Ret, S);
+    if (!Ret)
+        return NULL;
+
+    Ret -> NumElements = S -> NumElements;
+    Ret -> Head = S -> Head;
+    Ret -> Elements = malloc(sizeof(*Ret -> Elements) * S -> NumElements);
+
+    memcpy(Ret -> Elements, S -> Elements, sizeof(*Ret -> Elements) * Ret -> Head);
     return Ret;
 }
 
 Set SetUnion(Set S1, Set S2)
 {
-    size_t i,
-        Size = S1 -> NumElements;
-    
-    if (Size != S2 -> NumElements)
-        asm("int3");
+    size_t i;
 
-    for (i = 0; i < Size; i++)
-        if (SetQuery(S1, i) | SetQuery(S2, i))
-            SetSet(S1, i);
+    for (i = 0; i < S2 -> NumElements; i++)
+        SetSet(S1, S2 -> Elements[i]);
 
     return S1;
 }
 
 void SetSet(Set Set, size_t i)
 {
-    if (i >= Set -> NumElements)
-        return;
+    size_t Curr;
 
-    Set -> Elements[i] = 1;
+    for (Curr = 0; Curr < Set -> Head; Curr++)
+        if (Set -> Elements[Curr] == i)
+            return;
+
+    Set -> Elements[Set -> Head++] = i;
+
+    if (Set -> Head >= Set -> NumElements) {
+        Set -> NumElements *= GROWTH_FACTOR;
+        Set -> Elements = realloc(Set -> Elements,
+                                  sizeof(Set -> Elements) * Set -> NumElements);
+    }
 }
 
-int SetQuery(Set Set, size_t i)
+void SetClear(Set Set)
 {
-    if (i >= Set -> NumElements)
-        return 0;
-
-    return Set -> Elements[i];
+    Set -> Head = 0;
+    Set -> NumElements = START_SIZE;
+    Set -> Elements = realloc(Set -> Elements,
+                              sizeof(Set -> Elements) * Set -> NumElements);
 }
 
 int SetEquals(Set S1, Set S2)
 {
-    if (S1 -> NumElements != S2 -> NumElements)
-        asm("int3");
+    size_t i;
 
-    int i;
+    if (S1 -> Head != S2 -> Head)
+        return 0;
 
-    for (i = 0; i < S1 -> NumElements; i++)
+    qsort(S1 -> Elements, S1 -> Head, sizeof(*S1 -> Elements), IntCompare);
+    qsort(S2 -> Elements, S2 -> Head, sizeof(*S2 -> Elements), IntCompare);
+
+    for (i = 0; i < S1 -> Head; i++) 
         if (S1 -> Elements[i] != S2 -> Elements[i])
             return 0;
 
     return 1;
 }
 
-void SetClear(Set Set)
+int SetQuery(Set Set, size_t i)
 {
-    int i;
+    size_t Curr;
 
-    for (i = 0; i < Set -> NumElements; i++)
-        Set -> Elements[i] = 0;
+    for (Curr = 0; Curr < Set -> Head; Curr++)
+        if (Set -> Elements[Curr] == i)
+            return 1;
 
+    return 0;
 }
 
 void SetFree(Set Set)
 {
     free(Set -> Elements);
     free(Set);
+}
+
+static inline int IntCompare(const void *Int1, const void *Int2)
+{
+    int N1 = *(int*)Int1,
+        N2 = *(int*)Int2;
+
+    return N1 - N2;
 }

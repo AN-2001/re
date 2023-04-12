@@ -12,7 +12,7 @@
 
 typedef struct SetSet_t *SetOfSets;
 
-SetOfSets SetOfSetsInit(size_t Size, size_t SetSize);
+SetOfSets SetOfSetsInit();
 size_t SetOfSetsSet(SetOfSets SetSet, Set Set);
 size_t SetOfSetsSize(SetOfSets SetSet);
 int SetOfSetsQuery(SetOfSets SetSet, Set Set);

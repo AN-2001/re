@@ -3,7 +3,7 @@ flags := -g
 #flags += -DNDEBUG
 
 libs :=
-obj := automata.o queue.o set_2.o setOfSets.o
+obj := automata.o set.o setOfSets.o
 proj := re
 
 all: $(proj)

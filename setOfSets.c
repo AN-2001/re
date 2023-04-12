@@ -2,7 +2,7 @@
 #include "set.h"
 
 #define START_SIZE (32)
-#define GROWTH_SIZE (1.5f)
+#define GROWTH_FACTOR (2)
 
 struct SetSet_t {
     size_t Size, Head;
@@ -11,8 +11,6 @@ struct SetSet_t {
 
 SetOfSets SetOfSetsInit(size_t Size, size_t SetSize)
 {
-    int i;
-
     SetOfSets 
         Ret = malloc(sizeof(*Ret));
 
@@ -22,8 +20,6 @@ SetOfSets SetOfSetsInit(size_t Size, size_t SetSize)
     Ret -> Size = START_SIZE;
     Ret -> Head = 0;
     Ret -> Elements = malloc(sizeof(Set*) * START_SIZE);
-    for (i = 0; i < START_SIZE; i++)
-        Ret -> Elements[i] = SetInit(SetSize);
 
     return Ret;
 }
@@ -35,7 +31,7 @@ size_t SetOfSetsSize(SetOfSets SetSet)
 
 size_t SetOfSetsSet(SetOfSets SetSet, Set S)
 {
-    int i;
+    size_t i;
 
     for (i = 0; i < SetSet -> Head; i++)
         if (SetEquals(S, SetSet -> Elements[i]))
@@ -44,7 +40,7 @@ size_t SetOfSetsSet(SetOfSets SetSet, Set S)
     SetSet -> Elements[SetSet -> Head++] = SetCopy(S);
 
     if (SetSet -> Head >= SetSet -> Size) {
-        SetSet -> Size *= GROWTH_SIZE;
+        SetSet -> Size *= GROWTH_FACTOR;
         SetSet -> Elements = malloc(sizeof(Set*) * SetSet -> Size);
     }
 
@@ -69,7 +65,7 @@ Set SetOfSetsGet(SetOfSets SetSet, size_t Index)
 
 void SetOfSetsFree(SetOfSets SetSet)
 {
-    int i;
+    size_t i;
 
     for (i = 0; i < SetSet -> Head; i++)
         SetFree(SetSet -> Elements[i]);

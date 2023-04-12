@@ -5,12 +5,13 @@
 #include <unistd.h>
 #include "set.h"
 #include "setOfSets.h"
-#include "queue.h"
 #include "automata.h"
 #include "config.h"
+#include <setjmp.h>
+#include <signal.h>
 
 #define DFA_START_SIZE (32)
-#define DFA_GROWTH_FACTOR (1.5f)
+#define DFA_GROWTH_FACTOR (2)
 
 #define ASCII_TEXT_COLOR(r,g,b) "\033[38;2;"#r";"#g";"#b"m"
 #define CONS(N, H)     \
@@ -37,12 +38,14 @@ struct DFA_t {
 };
 
 static NFA Head = NULL;
+static jmp_buf ExitJmp;
 static inline char *VerifyRegex(const char *Regex);
 static inline NFA NFAFromRegex(char *Regex);
 static inline DFA DFAInitFromNFA(NFA NFA);
 static inline void DFARunChar(DFA DFA, char c);
 static inline int DFAIsDone(DFA DFA);
 static inline void DFAReset(DFA DFA);
+static void ExitHandler(int Sig);
 
 int main(int argc, const char *argv[])
 {
@@ -56,11 +59,13 @@ int main(int argc, const char *argv[])
     char Buff[BUFF_SIZE];
     char *Regex;
     int *Matches;
-    size_t i, j;
-    int M;
+    size_t i,
+           Line = 0;
+
+    signal(SIGINT, ExitHandler);
+    signal(SIGTERM, ExitHandler);
 
     Regex = VerifyRegex(argv[1]);
-
     if (!Regex) {
         printf("!INVALID REGEX!\n");
         return 1;
@@ -72,6 +77,7 @@ int main(int argc, const char *argv[])
 
     DFA = DFAInitFromNFA(NFA);
     Matches = malloc(sizeof(*Matches) * BUFF_SIZE);
+
     while (Head) {
         Next = Head -> Next; 
         if (Head != NFA)
@@ -80,16 +86,25 @@ int main(int argc, const char *argv[])
     }
     printf("!READY!\n");
 
+    if(setjmp(ExitJmp)) {
+        DFAFree(DFA);
+        NFAFree(NFA);
+        free(Matches);
+        return 0;
+    }
+
     while (fgets(Buff, BUFF_SIZE, stdin)) {
+        Line++;
+
         if (!DFARunInput(DFA, Buff, Matches))
             continue;
 
+        printf(ASCII_TEXT_COLOR(0, 255, 0) "LINE:%ld  ", Line);
         for (i = 0; Buff[i]; i++) {
             if (Matches[i])
                 printf(ASCII_TEXT_COLOR(255, 0, 0) "%c", Buff[i]);
             else
                 printf(ASCII_TEXT_COLOR(255, 255, 255) "%c", Buff[i]);
-            
         }
 
     }
@@ -98,6 +113,11 @@ int main(int argc, const char *argv[])
     NFAFree(NFA);
     free(Matches);
     return 0;
+}
+
+void ExitHandler(int Sig)
+{
+    longjmp(ExitJmp, 1);
 }
  
 static inline NFA NFAFromRegex(char *Str)
@@ -174,7 +194,7 @@ char *VerifyRegex(const char *Regex)
     if (Brackets)
         return NULL;
 
-    Cpy = malloc(Size);
+    Cpy = malloc(Size + 1);
     memcpy(Cpy, Regex, Size + 1);
     return Cpy;
 }
@@ -185,7 +205,7 @@ DFA DFAInitFromNFA(NFA NFA)
     DFA 
         Ret = malloc(sizeof(*Ret));
     Set
-        Closure = SetInit(NFA -> States);
+        Closure = SetInit();
 
     Ret -> Transitions = malloc(sizeof(*Ret -> Transitions) * DFA_START_SIZE);
 
@@ -193,9 +213,9 @@ DFA DFAInitFromNFA(NFA NFA)
         for (k = 0; k < DFA_ALPHA_LEN; k++)
             Ret -> Transitions[i][k] = -1;
 
-    Ret -> FinalStates = SetInit(DFA_START_SIZE);
+    Ret -> FinalStates = SetInit();
     Ret -> AllocatedStates = DFA_START_SIZE;
-    Ret -> AllStates = SetOfSetsInit(DFA_START_SIZE, NFA -> States);
+    Ret -> AllStates = SetOfSetsInit();
     Ret -> CurrentState = 0;
     Ret -> EquivNFA = NFA;
 
@@ -218,13 +238,14 @@ void DFARunChar(DFA DFA, char c)
 {
     Set CurrSet, CurrLetter;
     size_t j, i;
+    int Exists;
 
     if (c < 0)
         return;
 
     if (DFA -> Transitions[DFA -> CurrentState][c] == -1) {
         CurrSet = SetOfSetsGet(DFA -> AllStates, DFA -> CurrentState);
-        CurrLetter = SetInit(DFA -> EquivNFA -> States);
+        CurrLetter = SetInit();
         for (j = 0; j < DFA -> EquivNFA -> States; j++) {
             if (!SetQuery(CurrSet, j))
                 continue;
@@ -233,13 +254,17 @@ void DFARunChar(DFA DFA, char c)
                     DFA -> EquivNFA -> Transitions[j][c],
                     CurrLetter);
         }
-
+        
+        Exists = SetOfSetsQuery(DFA -> AllStates, CurrLetter);
         i = SetOfSetsSet(DFA -> AllStates, CurrLetter);
         DFAAddTransition(DFA, DFA -> CurrentState, c, i);
-        for (j = 0; j < DFA -> EquivNFA -> States; j++) {
-            if (SetQuery(CurrLetter, j) && SetQuery(DFA -> EquivNFA -> FinalStates, j)) {
-                SetSet(DFA -> FinalStates, i);
-                break;
+
+        if (!Exists) {
+            for (j = 0; j < DFA -> EquivNFA -> States; j++) {
+                if (SetQuery(CurrLetter, j) && SetQuery(DFA -> EquivNFA -> FinalStates, j)) {
+                    SetSet(DFA -> FinalStates, i);
+                    break;
+                }
             }
         }
 
@@ -302,7 +327,7 @@ NFA NFAInit(size_t States)
     Ret -> Transitions = malloc(sizeof(*Ret -> Transitions) * States);
     for (i = 0; i < States; i++)
         for (j  = 0; j < NFA_ALPHA_LEN; j++)
-            Ret -> Transitions[i][j] = SetInit(States);
+            Ret -> Transitions[i][j] = SetInit();
 
     for (i = 0; i < States; i++)
         SetSet(Ret -> Transitions[i][NFA_EPS], i);
@@ -316,7 +341,7 @@ void NFAEpsClosureAux(NFA NFA, Set States, Set Visited, Set Return);
 void NFAEpsClosure(NFA NFA, Set States, Set Return)
 {
     Set 
-        Visited = SetInit(NFA -> States);
+        Visited = SetInit();
 
     NFAEpsClosureAux(NFA, States, Visited, Return);
     SetFree(Visited);
